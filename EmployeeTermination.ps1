@@ -68,11 +68,11 @@ Function ExportToArray($user){
 
 Function terminate($user){
     Write-host "In Terminate"
-    #forceUserSignout($user)
-    #blockUserAccount($user)
-    #removeUserFromGroups($user)
+    forceUserSignout($user)
+    blockUserAccount($user)
+    removeUserFromGroups($user)
     #getOneDriveLink($username) #Can be commented out if user using script has SharePoint access
-    #if(ifSharedMailbox($user)){setSharedMailbox($user)}
+    if(ifSharedMailbox($user)){setSharedMailbox($user)}
     $global:output += ExportToArray($user)
     Write-host $global:output "printing"
 }
@@ -109,8 +109,8 @@ Function setSharedMailbox($username){
 
 Function Dropbox(){
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "PowerShell GUI"
-$form.Size = '260,320'
+$form.Text = "Employee Termination"
+$form.Size = '460,400'
 $form.StartPosition = "CenterScreen"
 $form.MinimumSize = $form.Size
 $form.MaximizeBox = $False
@@ -120,7 +120,7 @@ $button = New-Object System.Windows.Forms.Button
 $button.Location = '5,5'
 $button.Size = '75,23'
 $button.Width = 120
-$button.Text = "Print list to console"
+$button.Text = "Terminate"
  
 $checkbox = New-Object Windows.Forms.Checkbox
 $checkbox.Location = '140,8'
@@ -134,8 +134,8 @@ $label.Text = "Drop files or folders here:"
  
 $listBox = New-Object Windows.Forms.ListBox
 $listBox.Location = '5,60'
-$listBox.Height = 200
-$listBox.Width = 240
+$listBox.Height = 250
+$listBox.Width = 370
 $listBox.Anchor = ([System.Windows.Forms.AnchorStyles]::Bottom -bor [System.Windows.Forms.AnchorStyles]::Left -bor [System.Windows.Forms.AnchorStyles]::Right -bor [System.Windows.Forms.AnchorStyles]::Top)
 $listBox.IntegralHeight = $False
 $listBox.AllowDrop = $True
@@ -266,6 +266,7 @@ if ($result -eq [System.Windows.Forms.DialogResult]::OK)
 
 Function SendEmail($Output, $TicketNumber){
     $smtpserver = "somatus-com.mail.protection.outlook.com"
+    #$mx = (Get-MxRecordReport -domain (Get-AzureADCurrentSessionInfo).tenantDomain).HighestPriorityMailHost
     #$from = "ats.jason@somatus.com"
     $from = (Get-AzureADCurrentSessionInfo).account.id
     #$emailaddress = "jason@myaligned.com"
@@ -273,10 +274,10 @@ Function SendEmail($Output, $TicketNumber){
     $subject = ""
 
     if($ticketnumber -eq [String]::Empty){
-        $subject= "Office 365 Contact Info Update"
+        $subject= "Employee Termination"
         }
         else{
-        $subject= "#" + $ticketnumber + ": Office 365 Contact Info Update"
+        $subject= "#" + $ticketnumber + ": Employee Termination"
         }
 
     Send-Mailmessage -smtpServer $smtpServer -from $from -to $emailaddress -subject $subject -body $Output
@@ -380,7 +381,7 @@ Function isModuleInstalled(){
     }
     else{
     try{
-    Connect-AzureAD -ErrorAction -Stop
+    Connect-AzureAD
     } catch [System.AggregateException] {
         Write-host "Connecting to AzureAD is required to use this application"
         Exit
@@ -405,7 +406,7 @@ Function isModuleInstalled(){
     }
     else{
         try{
-    Connect-ExchangeOnline -ErrorAction -Stop
+    Connect-ExchangeOnline
     } catch [System.AggregateException] {
         Write-host "Connecting to ExchangeOnline is required to use this application"
         Exit
@@ -425,7 +426,7 @@ Function isModuleInstalled(){
     }
     else{
         try{
-        Connect-SPOService -URL https://somatusoffice365-admin.sharepoint.com/ -ErrorAction -Stop
+        Connect-SPOService -URL https://somatusoffice365-admin.sharepoint.com/ -ErrorAction Stop
     } catch [System.AggregateException] {
         Write-host "Connecting to SPOnline is required to use this application"
         Exit
@@ -439,45 +440,47 @@ function Read-InputBoxDialog([string]$Message, [string]$WindowTitle, [string]$De
     return [Microsoft.VisualBasic.Interaction]::InputBox($Message, $WindowTitle, $DefaultText)
 }
 
-#isModuleInstalled
+isModuleInstalled
 
 Dropbox
 foreach($path in $global:finalvalue){
     if(isExtension($path)){
     $displayname = OpenWordDoc($path)
-    #check displayname null here
-    $username = DoesUserExist($displayname)
-
-    if($username -ne $null){
-        if($username.count -eq 1){
-            Write-host "in here count"
-            terminate($username) 
-        }
-        elseif($username.count -gt 1){ 
-            $userSelection = SelectUserBox($username)
-            if($userSelection){
-                write-host $userSelection "test"
-                $selectedUser = Get-AzureADUser -ObjectId $userSelection
-                terminate($selectedUser)
+    if($displayname -ne $null){
+        $username = DoesUserExist($displayname)
+        if($username -ne $null){
+            if($username.count -eq 1){
+                Write-host "in here count"
+                terminate($username) 
+            }
+            elseif($username.count -gt 1){ 
+                $userSelection = SelectUserBox($username)
+                if($userSelection){
+                    write-host $userSelection "test"
+                    $selectedUser = Get-AzureADUser -ObjectId $userSelection
+                    terminate($selectedUser)
+                }
+            }
+            }
+            else{
+                Write-Host "Username not found"
+                $textEntered = Read-InputBoxDialog -Message "User could not be matched, please enter the user's email address" -WindowTitle "No User Found!"
+                if ($textEntered -eq $null) { Write-Host "You clicked CANCEL or left the field Blank!" }
+                elseif ($textEntered.trim().length -eq 0) { Write-host "Field was left empty" }
+                else { 
+                    Write-Host "Looking for $textEntered" 
+                    $searchedUser = Get-AzureADUser -ObjectID $textEntered
+                    if($searchedUser){
+                        terminate($searchedUser)
+                    }
+                    else{ Write-Host "User $textEntered could not be found" }
+            
+                }    
             }
         }
         else{
-            Write-Host "Username not found"
-            $textEntered = Read-InputBoxDialog -Message "User could not be matched, please enter the user's email address" -WindowTitle "No User Found!"
-            if ($textEntered -eq $null) { Write-Host "You clicked CANCEL or left the field Blank!" }
-            elseif ($textEntered.trim().length -eq 0) { Write-host "Field was left empty" }
-            else { 
-                Write-Host "Looking for $textEntered" 
-                $searchedUser = Get-AzureADUser -ObjectID $textEntered
-                if($searchedUser){
-                    terminate($searchedUser)
-                }
-                else{ Write-Host "User $textEntered could not be found" }
-            
-            }    
+            Write-Host "No Name foud in Document"
         }
-    }
-        Write-Host "No Name foud in Document"
     }
     else{
         Write-Host "File: " $path " is of wrong extension"
@@ -487,4 +490,5 @@ foreach($path in $global:finalvalue){
 
 OutputFormToUser
 
-
+Disconnect-AzureAD
+Disconnect-ExchangeOnline
