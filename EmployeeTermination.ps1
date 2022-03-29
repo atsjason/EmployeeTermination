@@ -375,15 +375,17 @@ Function isModuleInstalled(){
         } 
         else 
         { 
-            Write-Host AzureAD module is required to connect.
+            Write-Host AzureAD module is required to connect. -ForegroundColor red -BackgroundColor white
+            Read-Host -Prompt "Press Enter to exit" 
             Exit
         }
     }
     else{
     try{
     Connect-AzureAD
-    } catch [System.AggregateException] {
-        Write-host "Connecting to AzureAD is required to use this application"
+    } catch [Microsoft.Open.Azure.AD.CommonLibrary.AadAuthenticationFailedException] {
+        Write-host "Connecting to AzureAD is required to use this application" -ForegroundColor red -BackgroundColor white
+        Read-Host -Prompt "Press Enter to exit" 
         Exit
       }
     }
@@ -400,7 +402,8 @@ Function isModuleInstalled(){
         } 
         else 
         { 
-            Write-Host ExchangeOnline module is required.
+            Write-Host ExchangeOnline module is required. -ForegroundColor red -BackgroundColor white
+            Read-Host -Prompt "Press Enter to exit" 
             Exit
         }
     }
@@ -408,7 +411,8 @@ Function isModuleInstalled(){
         try{
     Connect-ExchangeOnline
     } catch [System.AggregateException] {
-        Write-host "Connecting to ExchangeOnline is required to use this application"
+        Write-host "Connecting to ExchangeOnline is required to use this application" -ForegroundColor red -BackgroundColor white
+        Read-Host -Prompt "Press Enter to exit" 
         Exit
       }
     }
